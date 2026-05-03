@@ -1,0 +1,14 @@
+currency: INR
+currency_symbol: "₹"
+monthly_salary: 0
+monthly_sip: 0
+monthly_rainy_day_fund_transfer: 0
+monthly_life_fund_transfer: 0
+emergency_fund_target: 0
+monthly_expense: 0
+assumptions:
+  salary_growth_percentage_per_year: 0
+  expense_growth_percentage_per_year: 0
+  sip_increase_per_year: 0
+  expected_annual_return_percentage: 0
+emergency_sources: []

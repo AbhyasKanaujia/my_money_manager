@@ -1,0 +1,128 @@
+{% extends "_layout.html.j2" %}
+{% from "components/macros.html.j2" import currency, badge_emergency with context %}
+
+{% set total_balance = accounts | map(attribute='balance') | sum %}
+{% set emergency_accounts = accounts | selectattr('type', 'in', ['savings', 'emergency']) | list %}
+{% set emergency_balance = emergency_accounts | map(attribute='balance') | sum %}
+{% set emergency_pct = (emergency_balance / config.emergency_fund_target * 100) | round(1) if config.emergency_fund_target else 0 %}
+
+{% block title %}Accounts | My Money Manager{% endblock %}
+
+{% block content %}
+<div class="nav">
+    <a href="portfolio.html">Portfolio</a>
+    <a href="sip_breakdown.html">SIP Breakdown</a>
+    <a href="accounts.html" class="active">Accounts</a>
+</div>
+
+<h1>Accounts</h1>
+
+<div class="grid">
+    <div class="card kpi">
+        <div class="value">{{ currency(total_balance) }}</div>
+        <div class="label">Total Balance</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ accounts | length }}</div>
+        <div class="label">Accounts</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ emergency_pct }}%</div>
+        <div class="label">Emergency Fund</div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ [emergency_pct, 100] | min }}%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h2>Account Balances</h2>
+        <div class="chart-container">
+            <canvas id="balanceChart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <h2>Emergency Fund Progress</h2>
+        <div class="chart-container">
+            <canvas id="emergencyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>All Accounts</h2>
+    <div id="accountsTable"></div>
+</div>
+
+<script>
+    const accLabels = {{ accounts | map(attribute='name') | list | tojson }};
+    const accBalances = {{ accounts | map(attribute='balance') | list | tojson }};
+
+    new Chart(document.getElementById('balanceChart'), {
+        type: 'bar',
+        data: {
+            labels: accLabels,
+            datasets: [{
+                label: 'Balance',
+                data: accBalances,
+                backgroundColor: '#4e79a7'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    new Chart(document.getElementById('emergencyChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Current', 'Target'],
+            datasets: [{
+                label: 'Amount',
+                data: [{{ emergency_balance }}, {{ config.emergency_fund_target }}],
+                backgroundColor: ['#28a745', '#e9ecef']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    const accIds = {{ accounts | sort(attribute='balance', reverse=true) | map(attribute='id') | list | tojson }};
+    const accNames = {{ accounts | sort(attribute='balance', reverse=true) | map(attribute='name') | list | tojson }};
+    const accTypes = {{ accounts | sort(attribute='balance', reverse=true) | map(attribute='type') | list | tojson }};
+    const accBalances = {{ accounts | sort(attribute='balance', reverse=true) | map(attribute='balance') | list | tojson }};
+    const accNotes = {{ accounts | sort(attribute='balance', reverse=true) | map(attribute='note') | list | tojson }};
+
+    new gridjs.Grid({
+        columns: [
+            { name: 'ID', width: '80px' },
+            { name: 'Name', width: '200px' },
+            {
+                name: 'Type',
+                width: '120px',
+                formatter: (cell) => ['savings', 'emergency'].includes(cell)
+                    ? gridjs.html('<span class="badge badge-emergency">Emergency</span>')
+                    : cell
+            },
+            {
+                name: 'Balance',
+                width: '140px',
+                formatter: (cell) => gridjs.html(`<span class="currency">${cell.toLocaleString('en-IN')}</span>`)
+            },
+            { name: 'Note', width: '300px' }
+        ],
+        data: accIds.map((id, i) => [id, accNames[i], accTypes[i], accBalances[i], accNotes[i]]),
+        search: true,
+        sort: true,
+        pagination: { limit: 10 }
+    }).render(document.getElementById('accountsTable'));
+</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% macro currency(value) %}
+{{ config.currency_symbol }}{{ value | inr }}
+{% endmacro %}
+
+{% macro kpi_card(value, label) %}
+<div class="card kpi">
+    <div class="value">{{ value }}</div>
+    <div class="label">{{ label }}</div>
+</div>
+{% endmacro %}
+
+{% macro badge_active() %}
+<span class="badge badge-active">Active</span>
+{% endmacro %}
+
+{% macro badge_stopped() %}
+<span class="badge badge-stopped">Stopped</span>
+{% endmacro %}
+
+{% macro badge_emergency() %}
+<span class="badge badge-emergency">Emergency</span>
+{% endmacro %}

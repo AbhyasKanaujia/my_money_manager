@@ -1,0 +1,154 @@
+{% extends "_layout.html.j2" %}
+{% from "components/macros.html.j2" import currency, badge_active, badge_stopped with context %}
+
+{% set total_invested = investments | map(attribute='invested_amount') | sum %}
+{% set active_sips = investments | selectattr('active_sip', 'equalto', true) | list %}
+{% set monthly_sip_total = active_sips | map(attribute='investment_target') | sum %}
+{% set emergency_acc_total = accounts | selectattr('id', 'in', config.emergency_sources) | map(attribute='balance') | sum %}
+{% set emergency_inv_total = investments | selectattr('id', 'in', config.emergency_sources) | map(attribute='invested_amount') | sum %}
+{% set emergency_total = emergency_acc_total + emergency_inv_total %}
+{% set emergency_pct = (emergency_total / config.emergency_fund_target * 100) | round(1) if config.emergency_fund_target else 0 %}
+
+{% block title %}Portfolio Dashboard | My Money Manager{% endblock %}
+
+{% block content %}
+<div class="nav">
+    <a href="portfolio.html" class="active">Portfolio</a>
+    <a href="sip_breakdown.html">SIP Breakdown</a>
+    <a href="accounts.html">Accounts</a>
+</div>
+
+<h1>Portfolio Dashboard</h1>
+
+<div class="grid">
+    <div class="card kpi">
+        <div class="value">{{ currency(total_invested) }}</div>
+        <div class="label">Total Invested</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ currency(monthly_sip_total) }}</div>
+        <div class="label">Monthly SIP Target</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ active_sips | length }}</div>
+        <div class="label">Active SIPs</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ currency(emergency_total) }}</div>
+        <div class="label">Emergency Fund ({{ emergency_pct }}% of {{ currency(config.emergency_fund_target) }})</div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ [emergency_pct, 100] | min }}%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h2>Allocation by Fund</h2>
+        <div class="chart-container">
+            <canvas id="allocationChart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <h2>Monthly SIP Targets</h2>
+        <div class="chart-container">
+            <canvas id="sipChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Investments</h2>
+    <div id="investmentsTable"></div>
+</div>
+
+<script>
+    const labels = {{ investments | map(attribute='name') | list | tojson }};
+    const investedData = {{ investments | map(attribute='invested_amount') | list | tojson }};
+    const targetData = {{ investments | map(attribute='investment_target') | list | tojson }};
+
+    new Chart(document.getElementById('allocationChart'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: investedData,
+                backgroundColor: [
+                    '#4e79a7', '#f28e2c', '#e15759', '#76b7b2',
+                    '#59a14f', '#edc948', '#b07aa1', '#ff9da7'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+
+    new Chart(document.getElementById('sipChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Invested',
+                    data: investedData,
+                    backgroundColor: '#4e79a7'
+                },
+                {
+                    label: 'Monthly Target',
+                    data: targetData,
+                    backgroundColor: '#76b7b2'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    const invData = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='id') | list | tojson }};
+    const invNames = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='name') | list | tojson }};
+    const invTypes = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='type') | list | tojson }};
+    const invInvested = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='invested_amount') | list | tojson }};
+    const invTargets = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='investment_target') | list | tojson }};
+    const invActive = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='active_sip') | list | tojson }};
+    const invNotes = {{ investments | sort(attribute='invested_amount', reverse=true) | map(attribute='note') | list | tojson }};
+
+    new gridjs.Grid({
+        columns: [
+            { name: 'ID', width: '80px' },
+            { name: 'Name', width: '280px' },
+            { name: 'Type', width: '100px' },
+            {
+                name: 'Invested',
+                width: '120px',
+                formatter: (cell) => gridjs.html(`<span class="currency">${cell.toLocaleString('en-IN')}</span>`)
+            },
+            {
+                name: 'Target',
+                width: '100px',
+                formatter: (cell) => cell > 0 ? gridjs.html(`<span class="currency">${cell.toLocaleString('en-IN')}</span>`) : '—'
+            },
+            {
+                name: 'Status',
+                width: '90px',
+                formatter: (cell) => cell
+                    ? gridjs.html('<span class="badge badge-active">Active</span>')
+                    : gridjs.html('<span class="badge badge-stopped">Stopped</span>')
+            },
+            { name: 'Note', width: '250px' }
+        ],
+        data: invData.map((id, i) => [
+            id, invNames[i], invTypes[i], invInvested[i], invTargets[i], invActive[i], invNotes[i]
+        ]),
+        search: true,
+        sort: true,
+        pagination: { limit: 10 }
+    }).render(document.getElementById('investmentsTable'));
+</script>
+{% endblock %}

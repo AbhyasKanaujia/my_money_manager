@@ -1,0 +1,11 @@
+accounts:
+  - id: "bank_001"
+    name: "Example Bank"
+    balance: 50000.00
+    type: "savings"
+    note: "Replace with your actual accounts"
+  - id: "bank_002"
+    name: "Another Bank"
+    balance: 20000.00
+    type: "emergency"
+    note: "Emergency fund liquid"

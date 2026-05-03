@@ -1,0 +1,107 @@
+{% extends "_layout.html.j2" %}
+{% from "components/macros.html.j2" import currency, badge_active, badge_stopped with context %}
+
+{% set total_sip = investments | selectattr('active_sip', 'equalto', true) | map(attribute='investment_target') | sum %}
+{% set stopped = investments | selectattr('active_sip', 'equalto', false) | list %}
+
+{% block title %}SIP Breakdown | My Money Manager{% endblock %}
+
+{% block content %}
+<div class="nav">
+    <a href="portfolio.html">Portfolio</a>
+    <a href="sip_breakdown.html" class="active">SIP Breakdown</a>
+    <a href="accounts.html">Accounts</a>
+</div>
+
+<h1>SIP Breakdown</h1>
+
+<div class="grid">
+    <div class="card kpi">
+        <div class="value">{{ currency(total_sip) }}</div>
+        <div class="label">Total Monthly SIP</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ currency(config.monthly_sip) }}</div>
+        <div class="label">Config Monthly SIP</div>
+    </div>
+    <div class="card kpi">
+        <div class="value">{{ stopped | length }}</div>
+        <div class="label">Stopped SIPs</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Active SIP Allocations</h2>
+    <div class="chart-container">
+        <canvas id="allocationChart"></canvas>
+    </div>
+</div>
+
+<div class="card">
+    <h2>SIP Details</h2>
+    <div id="sipTable"></div>
+</div>
+
+<script>
+    const activeLabels = {{ investments | selectattr('active_sip', 'equalto', true) | map(attribute='name') | list | tojson }};
+    const activeTargets = {{ investments | selectattr('active_sip', 'equalto', true) | map(attribute='investment_target') | list | tojson }};
+
+    new Chart(document.getElementById('allocationChart'), {
+        type: 'doughnut',
+        data: {
+            labels: activeLabels,
+            datasets: [{
+                data: activeTargets,
+                backgroundColor: ['#4e79a7', '#f28e2c', '#59a14f', '#edc948']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' },
+                title: { display: true, text: 'Active SIP Allocation' }
+            }
+        }
+    });
+
+    const sipNames = {{ investments | sort(attribute='active_sip', reverse=true) | map(attribute='name') | list | tojson }};
+    const sipTargets = {{ investments | sort(attribute='active_sip', reverse=true) | map(attribute='investment_target') | list | tojson }};
+    const sipActive = {{ investments | sort(attribute='active_sip', reverse=true) | map(attribute='active_sip') | list | tojson }};
+    const sipRules = {{ investments | sort(attribute='active_sip', reverse=true) | map(attribute='stop_adding_rule') | list | tojson }};
+    const totalSip = {{ total_sip }};
+
+    new gridjs.Grid({
+        columns: [
+            { name: 'Fund', width: '280px' },
+            {
+                name: 'Target',
+                width: '120px',
+                formatter: (cell) => cell > 0 ? gridjs.html(`<span class="currency">${cell.toLocaleString('en-IN')}</span>`) : '—'
+            },
+            {
+                name: '% of SIP',
+                width: '100px',
+                formatter: (cell, row) => {
+                    const target = row.cells[1].data;
+                    return target > 0 && totalSip > 0
+                        ? ((target / totalSip) * 100).toFixed(1) + '%'
+                        : '—';
+                }
+            },
+            {
+                name: 'Status',
+                width: '90px',
+                formatter: (cell) => cell
+                    ? gridjs.html('<span class="badge badge-active">Active</span>')
+                    : gridjs.html('<span class="badge badge-stopped">Stopped</span>')
+            },
+            { name: 'Stop Rule', width: '350px' }
+        ],
+        data: sipNames.map((name, i) => [name, sipTargets[i], 0, sipActive[i], sipRules[i]]),
+        search: true,
+        sort: true,
+        pagination: { limit: 10 }
+    }).render(document.getElementById('sipTable'));
+</script>
+{% endblock %}

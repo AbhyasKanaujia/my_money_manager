@@ -1,0 +1,9 @@
+investments:
+  - id: "fund_001"
+    name: "Example Index Fund"
+    type: "mutual_fund"
+    investment_target: 0
+    invested_amount: 0
+    active_sip: false
+    stop_adding_rule: ""
+    note: "Replace with your actual investments"
