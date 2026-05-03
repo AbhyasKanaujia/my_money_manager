@@ -2,7 +2,6 @@
 data/*.yaml
 data/*.yml
 data/*.json
-config.yaml
 *.env
 .env.*
 secrets.*
